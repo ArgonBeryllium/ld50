@@ -9,7 +9,7 @@ struct Attack : Expirable
 {
 	LaCreatura* parent;
 	float dmg;
-	Attack(LaCreatura* parent_, v2f pos_, float dmg_ = .5, float scl_ = 1) : Expirable(.1, pos_, {scl_, scl_}), parent(parent_), dmg(dmg_) {}
+	Attack(LaCreatura* parent_, v2f pos_, float dmg_ = .5, float scl_ = 1) : Expirable(.1, pos_-v2f(1,1)*scl_/2, {scl_, scl_}), parent(parent_), dmg(dmg_) {}
 
 	void update() override
 	{

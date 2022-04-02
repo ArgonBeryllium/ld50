@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cumt/cumt.h>
+#include <cumt/cumt_things.h>
 #include <shitrndr.h>
 #include "creaturas.h"
 #include "resources.h"
@@ -36,19 +37,28 @@ struct S_A : Scene
 	void load() override
 	{
 		bg_col = {0,0,0,255};
-		set.instantiate(new LaCreatura({0,0}, {1,1}, 2));
+		set.instantiate(new Player());
+		set.instantiate(new Enemy({-5, 2}));
 		Thing2D::view_scale = .2;
 	}
 	void loop() override
 	{
-		render::pattern::checkerBoard(0, 30, 30);
+		render::pattern::checkerBoard(-Thing2D::view_pos.x*Thing2D::getScalar(), -Thing2D::view_pos.y*Thing2D::getScalar(), 15);
 		Scene::loop();
+		Thing2D::view_pos = common::lerp(Thing2D::view_pos, Player::instance->centre(), FD::delta*4);
 	}
 	void onKey(SDL_Keycode key) override
 	{
 		for(auto p : set.things_id)
 			if(LaCreatura* c = dynamic_cast<LaCreatura*>(p.second))
 				c->onKey(key);
+		switch(key)
+		{
+			case SDLK_SPACE:
+				set.clear();
+				load();
+				break;
+		}
 	}
 	void onMB(uint8_t b) override
 	{

@@ -5,6 +5,7 @@
 #include <cumt/cumt_common.h>
 #include <cumt/cumt_things.h>
 
+Player* Player::instance = nullptr;
 static const float stamina_regen_rate_idle = .6, stamina_regen_rate_moving = .3;
 static const float roll_cost = .3, attack_cost = .4;
 static void click(const uint8_t& b, LaCreatura* parent)
@@ -12,12 +13,10 @@ static void click(const uint8_t& b, LaCreatura* parent)
 	switch(b)
 	{
 		case 1:
-			if(parent->stamina<roll_cost) break;
-			parent->fsm.enter_state(parent->roll_state);
+			parent->fsm.enter_state(parent->attack_state);
 			break;
 		case 3:
-			if(parent->stamina<attack_cost) break;
-			parent->transition_state->transition(.2, parent->attack_state);
+			parent->fsm.enter_state(parent->roll_state);
 			break;
 	}
 }
@@ -25,61 +24,8 @@ static void click(const uint8_t& b, LaCreatura* parent)
 void CreatureState::damage(float d)
 {
 	parent->hp -= d;
+	parent->fsm.enter_state(parent->hurt_state);
 	if(parent->hp<=0) parent->die();
-}
-
-void IdleState::enter() {}
-void IdleState::exit() {}
-void IdleState::update()
-{
-	if(common::inVec().getLengthSquare())
-		parent->fsm.enter_state(parent->move_state);
-
-	parent->stamina += FD::delta*stamina_regen_rate_idle;
-	parent->stamina = std::min(parent->stamina, parent->max_stamina);
-}
-void IdleState::render()
-{
-	using namespace shitrndr;
-	SetColour({200,200,200,255});
-	auto r = parent->getRect();
-	r.y += std::sin(FD::time*20)*Thing2D::getScalar()*.1;
-	FillRect(r);
-}
-void IdleState::onMB(uint8_t b)
-{
-	click(b, parent);
-}
-
-static float mv_t, mv_t_max = .1;
-void MoveState::enter()
-{
-	mv_t = mv_t_max;
-}
-void MoveState::update()
-{
-	if(!common::inVec().getLengthSquare())
-		parent->fsm.enter_state(parent->idle_state);
-	else if(mv_t<=0)
-		parent->pos += common::inVec().normalised()*FD::delta*parent->speed;
-	else
-	{
-		mv_t -= FD::delta;
-		parent->pos += common::inVec().normalised()*FD::delta*parent->speed*(1-mv_t/mv_t_max);
-	}
-
-	parent->stamina += FD::delta*stamina_regen_rate_moving;
-	parent->stamina = std::min(parent->stamina, parent->max_stamina);
-}
-void MoveState::render()
-{
-	using namespace shitrndr;
-	SetColour({180,200,255,255});
-	FillRect(parent->getRect());
-}
-void MoveState::onMB(uint8_t b)
-{
-	click(b, parent);
 }
 
 void TransitionState::transition(float delay, State *next_state_)
@@ -100,8 +46,63 @@ void TransitionState::render()
 	FillRect(parent->getRect());
 }
 
+// ## player ## //
+void PIdleState::enter() {}
+void PIdleState::exit() {}
+void PIdleState::update()
+{
+	if(common::inVec().getLengthSquare())
+		parent->fsm.enter_state(parent->move_state);
+
+	parent->stamina += FD::delta*stamina_regen_rate_idle;
+	parent->stamina = std::min(parent->stamina, parent->max_stamina);
+}
+void PIdleState::render()
+{
+	using namespace shitrndr;
+	SetColour({200,200,200,255});
+	auto r = parent->getRect();
+	r.y += std::sin(FD::time*20)*Thing2D::getScalar()*.1;
+	FillRect(r);
+}
+void PIdleState::onMB(uint8_t b)
+{
+	click(b, parent);
+}
+
+static float mv_t, mv_t_max = .1;
+void PMoveState::enter()
+{
+	mv_t = mv_t_max;
+}
+void PMoveState::update()
+{
+	if(!common::inVec().getLengthSquare())
+		parent->fsm.enter_state(parent->idle_state);
+	else if(mv_t<=0)
+		parent->pos += common::inVec().normalised()*FD::delta*parent->speed;
+	else
+	{
+		mv_t -= FD::delta;
+		parent->pos += common::inVec().normalised()*FD::delta*parent->speed*(1-mv_t/mv_t_max);
+	}
+
+	parent->stamina += FD::delta*stamina_regen_rate_moving;
+	parent->stamina = std::min(parent->stamina, parent->max_stamina);
+}
+void PMoveState::render()
+{
+	using namespace shitrndr;
+	SetColour({180,200,255,255});
+	FillRect(parent->getRect());
+}
+void PMoveState::onMB(uint8_t b)
+{
+	click(b, parent);
+}
+
 static constexpr float roll_dur = .2;
-void RollState::enter()
+void PRollState::enter()
 {
 	parent->stamina -= roll_cost;
 
@@ -110,29 +111,125 @@ void RollState::enter()
 	ip = parent->pos;
 	t = roll_dur;
 }
-void RollState::update()
+void PRollState::update()
 {
 	t -= FD::delta;
 	parent->pos = common::lerp(ip, tp, 1-t/roll_dur);
 	if(t<=0) parent->transition_state->transition(.5, parent->idle_state);
 }
-void RollState::render()
+void PRollState::render()
 {
 	using namespace shitrndr;
 	SetColour({180,200,255,205});
 	FillRect(parent->getRect());
 }
+// ############ //
 
+// ## enemy ## //
+void EIdleState::enter()
+{
+	dur = common::frand()*2+1;
+}
+void EIdleState::update()
+{
+	if(dur>0) dur -= FD::delta;
+	else parent->fsm.enter_state(parent->move_state);
+
+	v2f cs = v2f(1,1)*3;
+	auto cols = castBox(parent->parent_set, parent->centre()-cs/2, cs);
+	for(auto c : cols)
+	{
+		if(c==parent) continue;
+		if(c==Player::instance)
+		{
+			parent->target = Player::instance->centre();
+			parent->fsm.enter_state(parent->move_state);
+			break;
+		}
+	}
+
+	parent->stamina += FD::delta*stamina_regen_rate_idle;
+	parent->stamina = std::min(parent->stamina, parent->max_stamina);
+}
+void EIdleState::render()
+{
+	using namespace shitrndr;
+	SetColour({200,180,180,255});
+	auto r = parent->getRect();
+	r.y += std::sin(FD::time*20)*Thing2D::getScalar()*.1;
+	FillRect(r);
+}
+
+void EMoveState::enter()
+{
+	dur = 4;
+}
+void EMoveState::update()
+{
+	dur -= FD::delta;
+	v2f d = parent->target-parent->pos;
+	parent->pos += d.normalised()*FD::delta*parent->speed;
+
+	float pds = (Player::instance->pos-parent->pos).getLengthSquare();
+	if(pds>100 && dur <= 0)
+		parent->fsm.enter_state(parent->idle_state);
+	else if(pds<parent->range+parent->scl.x)
+		parent->fsm.enter_state(parent->attack_state);
+
+	parent->stamina += FD::delta*stamina_regen_rate_moving;
+	parent->stamina = std::min(parent->stamina, parent->max_stamina);
+}
+void EMoveState::render()
+{
+	using namespace shitrndr;
+	SetColour({180,200,255,255});
+	FillRect(parent->getRect());
+}
+
+void ERollState::enter()
+{
+	if(parent->stamina<roll_cost)
+	{
+		parent->fsm.enter_state(parent->idle_state);
+		return;
+	}
+	parent->stamina -= roll_cost;
+
+	v2f d = parent->pos-Player::instance->pos;
+	tp = parent->pos+d.normalised()*2;
+	ip = parent->pos;
+	t = roll_dur;
+}
+void ERollState::update()
+{
+	t -= FD::delta;
+	parent->pos = common::lerp(ip, tp, 1-t/roll_dur);
+	if(t<=0) parent->transition_state->transition(.5, parent->idle_state);
+}
+void ERollState::render()
+{
+	using namespace shitrndr;
+	SetColour({180,200,255,205});
+	FillRect(parent->getRect());
+}
+// ########### //
+
+// ## general ## //
 void AttackState::enter()
 {
+	if(parent->stamina<attack_cost)
+	{
+		parent->fsm.enter_state(parent->idle_state);
+		return;
+	}
 	parent->stamina -= attack_cost;
 
 	t = parent->attack_cooldown;
 
 	next_state = parent->idle_state;
-	v2f d = Thing2D::scrToSpace(shitrndr::Input::getMP())-parent->pos;
+	v2f d = parent->target-parent->centre();
 	d = d.normalised();
-	parent->parent_set->instantiate(new Attack(parent, parent->pos+d));
+	parent->parent_set->instantiate(new Attack(parent, parent->centre()+d, parent->strength, parent->range));
 }
 void AttackState::render()
 {
@@ -143,11 +240,8 @@ void AttackState::render()
 
 void HurtState::enter()
 {
-	t = parent->attack_cooldown;
+	t = parent->hurt_cooldown;
 	next_state = parent->idle_state;
-	v2f d = Thing2D::scrToSpace(shitrndr::Input::getMP())-parent->centre();
-	d = d.normalised();
-	parent->parent_set->instantiate(new Expirable(1, parent->centre()+d));
 }
 void HurtState::render()
 {
