@@ -60,8 +60,10 @@ struct EIdleState : CreatureState
 struct EMoveState : CreatureState
 {
 	float dur;
+	bool chasing;
 	EMoveState(LaCreatura* parent_) : CreatureState(parent_) {}
 	void enter() override;
+	void exit() override;
 	void update() override;
 	void render() override;
 };
@@ -99,7 +101,8 @@ struct LaCreatura : Thing2D
 		  speed,
 		  stamina, max_stamina,
 		  attack_cooldown, hurt_cooldown,
-		  strength, range;
+		  strength, range,
+		  detection_radius, chase_radius; // these should be in the Enemy class but at this point I can't be bothered to write out the pointer casts in the states
 	v2f target;
 	FloorMember fm = FloorMember(this);
 
@@ -222,6 +225,8 @@ struct Enemy : LaCreatura
 		hurt_cooldown = 1;
 		strength = .6;
 		range = 1.5;
+		detection_radius = 5;
+		chase_radius = 9;
 
 		fsm.starting_state = idle_state;
 		fsm.start();

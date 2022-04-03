@@ -45,7 +45,7 @@ inline v2f getRandomPointAway(v2f o, float r)
 }
 void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 {
-	int e = std::rand()%9+2;
+	int e = depth?std::rand()%9+2:20;
 	while((sp-t).getLengthSquare()>5)
 	{
 		e--;
@@ -88,6 +88,9 @@ struct S_A : Scene
 	void loop() override
 	{
 		render::pattern::checkerBoard(-Thing2D::view_pos.x*Thing2D::getScalar(), -Thing2D::view_pos.y*Thing2D::getScalar(), 15);
+		for(auto c : LaCreatura::las_creaturas)
+			for(auto d : LaCreatura::las_creaturas)
+				aabb::resolveOverlaps(c, d, c->max_hp/(c->max_hp+d->max_hp));
 		Scene::loop();
 		for(auto c : LaCreatura::las_creaturas)
 			c->render();

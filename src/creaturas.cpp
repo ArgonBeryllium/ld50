@@ -134,18 +134,21 @@ void EIdleState::enter()
 void EIdleState::update()
 {
 	if(dur>0) dur -= FD::delta;
-	else parent->fsm.enter_state(parent->move_state);
+	else
+	{
+		parent->target = parent->centre()+v2f(common::frand()*2-1,common::frand()*2-1)*parent->speed*5;
+		parent->fsm.enter_state(parent->move_state);
+	}
 
 	v2f cs = v2f(1,1)*3;
-	auto cols = castBox(parent->parent_set, parent->centre()-cs/2, cs);
-	for(auto c : cols)
+	if((Player::instance->centre()-parent->centre()).getLengthSquare()<parent->detection_radius*parent->detection_radius)
 	{
-		if(c==parent) continue;
-		if(c==Player::instance)
+		if(parent->hp/parent->max_hp<.2)
+			parent->fsm.enter_state(parent->roll_state);
+		else
 		{
 			parent->target = Player::instance->centre();
 			parent->fsm.enter_state(parent->move_state);
-			break;
 		}
 	}
 
@@ -159,7 +162,11 @@ void EIdleState::render()
 
 void EMoveState::enter()
 {
-	dur = 4;
+	dur = common::frand()*2+3;
+}
+void EMoveState::exit()
+{
+	chasing = false;
 }
 void EMoveState::update()
 {
@@ -167,11 +174,19 @@ void EMoveState::update()
 	v2f d = parent->target-parent->pos;
 	parent->pos += d.normalised()*FD::delta*parent->speed;
 
-	float pds = (Player::instance->pos-parent->pos).getLengthSquare();
-	if(pds>100 && dur <= 0)
+	float pds = (Player::instance->centre()-parent->centre()).getLengthSquare();
+	float drs = parent->detection_radius;
+	drs = drs*drs;
+	float crs = parent->chase_radius;
+	crs = crs*crs;
+
+	if(pds < drs) chasing = true;
+	if((!chasing && pds>drs && dur<=0) || (chasing && pds>crs))
 		parent->fsm.enter_state(parent->idle_state);
-	else if(pds<parent->range+parent->scl.x)
-		parent->fsm.enter_state(parent->attack_state);
+	else if(chasing && pds<crs)
+		parent->target = Player::instance->centre();
+	if(pds<parent->range+parent->scl.x)
+		parent->fsm.enter_state(common::frand() < parent->hp/parent->max_hp+.3 ? parent->attack_state:parent->roll_state);
 
 	parent->stamina += FD::delta*stamina_regen_rate_moving;
 	parent->stamina = std::min(parent->stamina, parent->max_stamina);
@@ -190,7 +205,7 @@ void ERollState::enter()
 	}
 	parent->stamina -= roll_cost;
 
-	v2f d = parent->pos-Player::instance->pos;
+	v2f d = parent->centre()-Player::instance->centre();
 	tp = parent->pos+d.normalised()*2;
 	ip = parent->pos;
 	t = roll_dur;
