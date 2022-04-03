@@ -45,13 +45,15 @@ inline v2f getRandomPointAway(v2f o, float r)
 }
 void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 {
-	int e = depth?std::rand()%9+2:20;
+	int e = depth?std::rand()%9+2:17;
+	int i = 0;
 	while((sp-t).getLengthSquare()>5)
 	{
+		i++;
 		e--;
 		if(!e)
 		{
-			e = std::rand()%9+1;
+			e = std::rand()%19+1;
 			set->instantiate(new Enemy(sp));
 		}
 		v2f d = t-sp;
@@ -61,7 +63,7 @@ void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 		if(std::rand()%2) set->instantiate(new RoundTile(sp, r));
 		else set->instantiate(new FloorTile(sp, v2f(1,1)*r*2));
 		
-		if(depth<3 && common::frand()<.05)
+		if(i>5 && depth<4 && common::frand()<.05)
 		{
 			v2f p = getRandomPointAway(sp, common::frand()*20+10);
 			generateLevelPath(set, sp, p, depth+1);
@@ -80,6 +82,7 @@ struct S_A : Scene
 		set.clear();
 		set.instantiate(new FloorTile({-5,-5}, {10, 10}));
 		auto t = set.instantiate(new FloorTile(getRandomPointAway({}, 40+common::frand()*20), {10, 10}));
+		set.instantiate(new Goal(t->centre()));
 		generateLevelPath(&set, {}, t->centre());
 		set.instantiate(new Player());
 		//set.instantiate(new Enemy({-5, 2}));
@@ -89,7 +92,7 @@ struct S_A : Scene
 	{
 		render::pattern::checkerBoard(-Thing2D::view_pos.x*Thing2D::getScalar(), -Thing2D::view_pos.y*Thing2D::getScalar(), 15);
 		for(auto c : LaCreatura::las_creaturas)
-			for(auto d : LaCreatura::las_creaturas)
+		for(auto d : LaCreatura::las_creaturas)
 				aabb::resolveOverlaps(c, d, c->max_hp/(c->max_hp+d->max_hp));
 		Scene::loop();
 		for(auto c : LaCreatura::las_creaturas)
@@ -120,6 +123,7 @@ struct S_A : Scene
 		for(auto p : set.things_id)
 			if(LaCreatura* c = dynamic_cast<LaCreatura*>(p.second))
 				c->onMB(b);
+		if(b==2) StatusScene::win(); //TODO remove this
 	}
 };
 struct S_Splash : Scene
@@ -162,7 +166,7 @@ void gameStart()
 	loadResources();
 
 	//Scene::states = {new S_Splash(), new S_A(), new S_B()};
-	Scene::scenes = {new S_A()};
+	Scene::scenes = {new S_A(), new StatusScene()};
 	Scene::allStart();
 	Scene::getActive()->load();
 }

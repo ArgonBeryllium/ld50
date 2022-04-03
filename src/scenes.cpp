@@ -1,3 +1,4 @@
+#include <SDL2/SDL_render.h>
 #include <cumt/cumt.h>
 #include "scenes.h"
 
@@ -50,3 +51,8 @@ void Scene::update()
 		}
 	}
 }
+
+StatusScene* StatusScene::instance;
+SDL_Texture* StatusScene::banner;
+std::string StatusScene::subtitle;
+size_t StatusScene::score = 0;

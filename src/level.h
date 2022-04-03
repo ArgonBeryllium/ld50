@@ -5,6 +5,7 @@
 #include <cumt/cumt_aabb.h>
 #include <cumt/cumt_things.h>
 #include <shitrndr.h>
+#include "scenes.h"
 using namespace cumt;
 
 struct FloorTile : Thing2D
@@ -69,5 +70,18 @@ struct FloorMember
 			return;
 		}
 		parent->pos += d;
+	}
+};
+
+struct Goal : Thing2D
+{
+	Goal(v2f pos_) : Thing2D(pos_-v2f{2,2}, {4,4}) {}
+	void update() override;
+	void render() override
+	{
+		using namespace shitrndr;
+		SetColour({0,255,255,255});
+		v2i sc = spaceToScr(centre());
+		DrawCircle(sc.x, sc.y, getScalar()*2);
 	}
 };

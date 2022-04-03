@@ -104,7 +104,7 @@ void PMoveState::onMB(uint8_t b)
 	click(b, parent);
 }
 
-static constexpr float roll_dur = .2;
+static constexpr float roll_dur = .2, roll_vuln = .3;
 void PRollState::enter()
 {
 	parent->stamina -= roll_cost;
@@ -118,7 +118,7 @@ void PRollState::update()
 {
 	t -= FD::delta;
 	parent->pos = common::lerp(ip, tp, 1-t/roll_dur);
-	if(t<=0) parent->transition_state->transition(.5, parent->idle_state);
+	if(t<=0) parent->transition_state->transition(roll_vuln, parent->idle_state);
 }
 void PRollState::render()
 {
@@ -143,13 +143,8 @@ void EIdleState::update()
 	v2f cs = v2f(1,1)*3;
 	if((Player::instance->centre()-parent->centre()).getLengthSquare()<parent->detection_radius*parent->detection_radius)
 	{
-		if(parent->hp/parent->max_hp<.2)
-			parent->fsm.enter_state(parent->roll_state);
-		else
-		{
-			parent->target = Player::instance->centre();
-			parent->fsm.enter_state(parent->move_state);
-		}
+		parent->target = Player::instance->centre();
+		parent->fsm.enter_state(parent->move_state);
 	}
 
 	parent->stamina += FD::delta*stamina_regen_rate_idle;
@@ -186,7 +181,7 @@ void EMoveState::update()
 	else if(chasing && pds<crs)
 		parent->target = Player::instance->centre();
 	if(pds<parent->range+parent->scl.x)
-		parent->fsm.enter_state(common::frand() < parent->hp/parent->max_hp+.3 ? parent->attack_state:parent->roll_state);
+		parent->fsm.enter_state(common::frand() < parent->hp/parent->max_hp*.1+.8 ? parent->attack_state:parent->roll_state);
 
 	parent->stamina += FD::delta*stamina_regen_rate_moving;
 	parent->stamina = std::min(parent->stamina, parent->max_stamina);

@@ -7,6 +7,7 @@
 #include "fsm.h"
 #include "fsm.h"
 #include "level.h"
+#include "scenes.h"
 using namespace cumt;
 
 struct TransitionState : CreatureState
@@ -165,8 +166,12 @@ struct LaCreatura : Thing2D
 
 struct Player : LaCreatura
 {
-	float torch_fade = .05;
+	float flame_fade = .05;
 	static Player* instance;
+
+	float base_flame = 1;
+	inline float getFlame() { return base_flame*stamina/max_stamina; }
+
 	Player(v2f pos_ = {}) : LaCreatura(pos_, {1,1}, 2)
 	{
 		idle_state = new PIdleState(this);
@@ -193,21 +198,23 @@ struct Player : LaCreatura
 	{
 		target = scrToSpace(shitrndr::Input::getMP());
 
-		render::text({0, 16}, std::to_string(max_stamina));
-		max_stamina -= torch_fade*FD::delta;
-		if(max_stamina<=0 || stamina<=0) die();
 		LaCreatura::update();
+		base_flame -= flame_fade*FD::delta;
+		if(getFlame()<=0)
+			die();
 	}
 	void render() override
 	{
 		LaCreatura::render();
 		render::text(Thing2D::spaceToScr(centre()), "P");
+		render::text(Thing2D::spaceToScr(centre()+v2f{1,-.5}), std::to_string(getFlame()));
 	}
 
 	virtual void die() override
 	{
 		Particles2D* p = new Particles2D(30);
 		parent_set->instantiate(p);
+		StatusScene::lose();
 	}
 };
 
@@ -236,5 +243,11 @@ struct Enemy : LaCreatura
 	void update() override
 	{
 		LaCreatura::update();
+	}
+
+	virtual void die() override
+	{
+		Player::instance->base_flame += max_hp;
+		parent_set->scheduleDestroy(this);
 	}
 };
