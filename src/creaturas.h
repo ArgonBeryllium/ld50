@@ -1,10 +1,7 @@
 #pragma once
-#include <SDL2/SDL_keycode.h>
+#include <algorithm>
 #include <cstdint>
 #include <cumt/cumt.h>
-#include <cumt/cumt_common.h>
-#include <cumt/cumt_render.h>
-#include <cumt/cumt_things.h>
 #include <shitrndr.h>
 #include "expirables.h"
 #include "fsm.h"
@@ -106,8 +103,14 @@ struct LaCreatura : Thing2D
 	v2f target;
 	FloorMember fm = FloorMember(this);
 
+	static std::vector<LaCreatura*> las_creaturas;
 	LaCreatura(v2f pos_, v2f scl_, float hp_, float speed_ = 4) :
-		Thing2D(pos_, scl_), hp(hp_), max_hp(hp_), speed(speed_) {} // remember to start the fsm
+		Thing2D(pos_, scl_), hp(hp_), max_hp(hp_), speed(speed_) { las_creaturas.push_back(this); } // remember to start the fsm
+	~LaCreatura()
+	{
+		auto i = std::find(las_creaturas.begin(), las_creaturas.end(), this);
+		las_creaturas.erase(i);
+	}
 
 	bool is_dead() { return hp<=0; }
 	virtual void die()

@@ -7,6 +7,7 @@
 #include <shitrndr.h>
 
 Player* Player::instance = nullptr;
+std::vector<LaCreatura*> LaCreatura::las_creaturas;
 static const float stamina_regen_rate_idle = .6, stamina_regen_rate_moving = .3;
 static const float roll_cost = .3, attack_cost = .4;
 static void click(const uint8_t& b, LaCreatura* parent)
