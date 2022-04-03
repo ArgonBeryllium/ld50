@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cumt/cumt_common.h>
 #include <cumt/cumt_things.h>
+#include <shitrndr.h>
 
 Player* Player::instance = nullptr;
 static const float stamina_regen_rate_idle = .6, stamina_regen_rate_moving = .3;
@@ -19,6 +20,15 @@ static void click(const uint8_t& b, LaCreatura* parent)
 			parent->fsm.enter_state(parent->roll_state);
 			break;
 	}
+}
+
+static void render_lc(LaCreatura* p, SDL_Colour c)
+{
+	using namespace shitrndr;
+	SDL_Rect r = p->getRect();
+	float s = 1-std::abs(WindowProps::getHeight()/2.-r.y)/WindowProps::getHeight()*2;
+	SetColour(c);
+	FillRect(r);
 }
 
 void CreatureState::damage(float d)
@@ -41,9 +51,7 @@ void TransitionState::update()
 }
 void TransitionState::render()
 {
-	using namespace shitrndr;
-	SetColour({210,210,210,Uint8(std::abs(std::sin(FD::time*4))*255)});
-	FillRect(parent->getRect());
+	render_lc(parent, {210,210,210,Uint8(std::abs(std::sin(FD::time*4))*255)});
 }
 
 // ## player ## //
@@ -59,11 +67,7 @@ void PIdleState::update()
 }
 void PIdleState::render()
 {
-	using namespace shitrndr;
-	SetColour({200,200,200,255});
-	auto r = parent->getRect();
-	r.y += std::sin(FD::time*20)*Thing2D::getScalar()*.1;
-	FillRect(r);
+	render_lc(parent, {200,200,200,255});
 }
 void PIdleState::onMB(uint8_t b)
 {
@@ -92,9 +96,7 @@ void PMoveState::update()
 }
 void PMoveState::render()
 {
-	using namespace shitrndr;
-	SetColour({180,200,255,255});
-	FillRect(parent->getRect());
+	render_lc(parent, {180,200,255,255});
 }
 void PMoveState::onMB(uint8_t b)
 {
@@ -119,9 +121,7 @@ void PRollState::update()
 }
 void PRollState::render()
 {
-	using namespace shitrndr;
-	SetColour({180,200,255,205});
-	FillRect(parent->getRect());
+	render_lc(parent, {180,200,255,205});
 }
 // ############ //
 
@@ -153,11 +153,7 @@ void EIdleState::update()
 }
 void EIdleState::render()
 {
-	using namespace shitrndr;
-	SetColour({200,180,180,255});
-	auto r = parent->getRect();
-	r.y += std::sin(FD::time*20)*Thing2D::getScalar()*.1;
-	FillRect(r);
+	render_lc(parent, {200,180,180,255});
 }
 
 void EMoveState::enter()
@@ -181,9 +177,7 @@ void EMoveState::update()
 }
 void EMoveState::render()
 {
-	using namespace shitrndr;
-	SetColour({180,200,255,255});
-	FillRect(parent->getRect());
+	render_lc(parent, {180,200,255,255});
 }
 
 void ERollState::enter()
@@ -208,9 +202,7 @@ void ERollState::update()
 }
 void ERollState::render()
 {
-	using namespace shitrndr;
-	SetColour({180,200,255,205});
-	FillRect(parent->getRect());
+	render_lc(parent, {180,200,255,205});
 }
 // ########### //
 
@@ -233,9 +225,7 @@ void AttackState::enter()
 }
 void AttackState::render()
 {
-	using namespace shitrndr;
-	SetColour({10,20,255,255});
-	FillRect(parent->getRect());
+	render_lc(parent, {10,20,255,255});
 }
 
 void HurtState::enter()
@@ -245,7 +235,5 @@ void HurtState::enter()
 }
 void HurtState::render()
 {
-	using namespace shitrndr;
-	SetColour({255,10,10,Uint8(std::abs(std::sin(FD::time*4))*255)});
-	FillRect(parent->getRect());
+	render_lc(parent, {255,10,10,Uint8(std::abs(std::sin(FD::time*4))*255)});
 }

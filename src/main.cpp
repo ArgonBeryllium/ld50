@@ -3,6 +3,7 @@
 #include <cumt/cumt_things.h>
 #include <shitrndr.h>
 #include "creaturas.h"
+#include "level.h"
 #include "resources.h"
 #include "scenes.h"
 #include "expirables.h"
@@ -37,9 +38,12 @@ struct S_A : Scene
 	void load() override
 	{
 		bg_col = {0,0,0,255};
+		set.clear();
+		set.instantiate(new FloorTile({}, {10, 10}));
+		set.instantiate(new FloorTile({-2, 2}));
 		set.instantiate(new Player());
 		set.instantiate(new Enemy({-5, 2}));
-		Thing2D::view_scale = .2;
+		Thing2D::view_scale = .3;
 	}
 	void loop() override
 	{

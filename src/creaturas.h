@@ -9,6 +9,7 @@
 #include "expirables.h"
 #include "fsm.h"
 #include "fsm.h"
+#include "level.h"
 using namespace cumt;
 
 struct TransitionState : CreatureState
@@ -103,6 +104,7 @@ struct LaCreatura : Thing2D
 		  attack_cooldown, hurt_cooldown,
 		  strength, range;
 	v2f target;
+	FloorMember fm = FloorMember(this);
 
 	LaCreatura(v2f pos_, v2f scl_, float hp_, float speed_ = 4) :
 		Thing2D(pos_, scl_), hp(hp_), max_hp(hp_), speed(speed_) {} // remember to start the fsm
@@ -122,6 +124,7 @@ struct LaCreatura : Thing2D
 	void update() override
 	{
 		fsm.update();
+		fm.update();
 	}
 	void render() override
 	{
@@ -156,6 +159,7 @@ struct LaCreatura : Thing2D
 
 struct Player : LaCreatura
 {
+	float torch_fade = .05;
 	static Player* instance;
 	Player(v2f pos_ = {}) : LaCreatura(pos_, {1,1}, 2)
 	{
@@ -177,17 +181,27 @@ struct Player : LaCreatura
 	}
 	~Player()
 	{
-		instance = this;
+		instance = nullptr;
 	}
 	void update() override
 	{
 		target = scrToSpace(shitrndr::Input::getMP());
+
+		render::text({0, 16}, std::to_string(max_stamina));
+		max_stamina -= torch_fade*FD::delta;
+		if(max_stamina<=0 || stamina<=0) die();
 		LaCreatura::update();
 	}
 	void render() override
 	{
 		LaCreatura::render();
 		render::text(Thing2D::spaceToScr(centre()), "P");
+	}
+
+	virtual void die() override
+	{
+		Particles2D* p = new Particles2D(30);
+		parent_set->instantiate(p);
 	}
 };
 
@@ -213,7 +227,6 @@ struct Enemy : LaCreatura
 	}
 	void update() override
 	{
-		target = Player::instance->centre();
 		LaCreatura::update();
 	}
 };
