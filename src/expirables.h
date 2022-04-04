@@ -29,7 +29,7 @@ struct Particles : Expirable
 	std::vector<cumt::v2f> vels, poss;
 
 	Particles(cumt::v2f pos_, uint32_t col_ = C_GOAL, wchar_t c_ = '*', float force = 1, int c = 20) :
-		Expirable(1), ch(c_), col(col_)
+		Expirable(1, pos_), ch(c_), col(col_), count(c)
 	{
 		for(auto i = 0; i < c; i++)
 		{

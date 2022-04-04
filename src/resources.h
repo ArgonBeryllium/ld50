@@ -51,7 +51,7 @@ inline Mix_Chunk* loadSound(const char* path)
 	Mix_Chunk* out = Mix_LoadWAV((std::string("res/")+path).c_str());
 	if(!out) std::cerr << "couldn't load chunk: " << Mix_GetError() << '\n';
 	return out;
-} // thank you LihO stackoverflow https://stackoverflow.com/questions/4775437/read-unicode-utf-8-file-into-wstring
+}
 
 // thank you stackoverflow https://stackoverflow.com/questions/4775437/read-unicode-utf-8-file-into-wstring
 inline std::wstring loadStrSprite(const char* path)
@@ -162,13 +162,11 @@ inline void s_line(cumt::v2i a, cumt::v2i b, wchar_t c = '#', const uint32_t& f_
 	v2i d = b-a;
 	int sdx=sign(d.x), sdy=sign(d.y);
 
-	int i = 0;
 	put_char(b, c, f_col, b_col);
-	if(!d.x)      while(a.y-b.y-sdy && i != 10000) { i++; put_char(a, c, f_col, b_col); a.y+=sdy; }
-	else if(!d.y) while(a.x-b.x-sdx && i != 10000) { i++; put_char(a, c, f_col, b_col); a.x+=sdx; }
-	else while((a.x != b.x || a.y != b.y) && i != 10000)
+	if(!d.x)      while(a.y-b.y-sdy) { put_char(a, c, f_col, b_col); a.y+=sdy; }
+	else if(!d.y) while(a.x-b.x-sdx) { put_char(a, c, f_col, b_col); a.x+=sdx; }
+	else while(a.x != b.x || a.y != b.y)
 	{
-		i++;
 		float dx = b.x-a.x, dy = b.y-a.y;
 		put_char(a, c, f_col, b_col);
 
@@ -177,7 +175,6 @@ inline void s_line(cumt::v2i a, cumt::v2i b, wchar_t c = '#', const uint32_t& f_
 		else
 			a.y+=sdy;
 	}
-	if(i==10000) std::cerr << "s_line fail\n";
 }
 inline void s_qline(cumt::v2i a, cumt::v2i b, wchar_t c = '#', const uint32_t& f_col = C_FG, const uint32_t& b_col = C_BG)
 {
