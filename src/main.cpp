@@ -140,7 +140,7 @@ struct S_A : Scene
 			else c->render();
 
 		Thing2D::view_pos = common::lerp(Thing2D::view_pos, Player::instance->centre(), FD::delta*4);
-		put_char(Input::getMP(), 'x', CS_FLAME[0]);
+		put_char(quantisePos(Input::getMP()), 'x', CS_FLAME[0]);
 	}
 	void onKey(SDL_Keycode key) override
 	{
