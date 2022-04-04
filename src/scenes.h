@@ -1,4 +1,5 @@
 #pragma once
+#include "resources.h"
 #include <SDL2/SDL_render.h>
 #include <cstdint>
 #include <cumt/cumt_things.h>
@@ -17,21 +18,21 @@ struct Scene
 	static void allStart();
 	static void update();
 
-	float ti_dur = .2, to_dur = .2;
+	float ti_dur = .4, to_dur = .2;
 
 	cumt::ThingSet set;
 
 	virtual void transOut(float t)
 	{
 		using namespace shitrndr;
+		using namespace cumt;
 		SetColour(bg_col);
-		FillRect({0,0,WindowProps::getWidth(), int(WindowProps::getHeight()*t)});
+		int y = int(WindowProps::getHeight()*t);
+		FillRect({0,0,WindowProps::getWidth(),y});
 	}
 	virtual void transIn(float t)
 	{
-		using namespace shitrndr;
-		SetColour(bg_col);
-		FillRect({0,0,WindowProps::getWidth(), int(WindowProps::getHeight()*(1-t))});
+		transOut(1-t);
 	}
 
 	virtual void start() {}
@@ -67,8 +68,16 @@ struct StatusScene : Scene
 		td.destroy = false;
 		td.render = false;
 		td.col = {255,255,0,255};
-		banner = render::text({}, "DEPTHS CONQUERED", td);
-		subtitle = std::to_string(score)+" / 4  [SPACE] ADVANCE";
+		if(score==4)
+		{
+			banner = render::text({}, "u win :)", td);
+			subtitle = std::to_string(score)+" / 4  [Q] QUIT";
+		}
+		else
+		{
+			banner = render::text({}, "DEPTHS CONQUERED", td);
+			subtitle = std::to_string(score)+" / 4  [SPACE] ADVANCE";
+		}
 	}
 	static void lose()
 	{
@@ -100,7 +109,7 @@ struct StatusScene : Scene
 
 	void onKey(SDL_Keycode key) override
 	{
-		if(key==SDLK_SPACE)
+		if(score < 4 && key==SDLK_SPACE)
 			setActive(0); //TODO make this less hacky
 	}
 };

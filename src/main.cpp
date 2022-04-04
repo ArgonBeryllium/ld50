@@ -19,7 +19,7 @@ void renderSplash();
 int CUMT_MULP_MAIN()
 {
 	InitParams ip;
-	ip.sr_ps = 3;
+	ip.sr_ps = 1;
 
 	quickInit(960, 720, ip);
 	onLoop = &gameLoop;
@@ -45,7 +45,7 @@ inline v2f getRandomPointAway(v2f o, float r)
 }
 void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 {
-	int e = depth?std::rand()%9+2:17;
+	int e = depth?std::rand()%9+2:10;
 	int i = 0;
 	while((sp-t).getLengthSquare()>5)
 	{
@@ -53,17 +53,14 @@ void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 		e--;
 		if(!e)
 		{
-			e = std::rand()%19+1;
+			e = std::rand()%16+5-StatusScene::score;
 			set->instantiate(new Enemy(sp));
 		}
 		v2f d = t-sp;
 
-		float r = (common::frand()*2+1);
-
-		if(std::rand()%2) set->instantiate(new RoundTile(sp, r));
-		else set->instantiate(new FloorTile(sp, v2f(1,1)*r*2));
-		
-		if(i>5 && depth<4 && common::frand()<.05)
+		float r = (common::frand()*2+2);
+		set->instantiate(new RoundTile(sp, r));
+		if(i>5 && depth<2 && !(i%(9-StatusScene::score)))
 		{
 			v2f p = getRandomPointAway(sp, common::frand()*20+10);
 			generateLevelPath(set, sp, p, depth+1);
@@ -78,25 +75,40 @@ struct S_A : Scene
 {
 	void load() override
 	{
-		bg_col = {0,0,0,255};
+		bg_col = itoc(C_BG);
+		Thing2D::view_scale = .9/WindowProps::getPixScale();
+
 		set.clear();
-		set.instantiate(new FloorTile({-5,-5}, {10, 10}));
-		auto t = set.instantiate(new FloorTile(getRandomPointAway({}, 40+common::frand()*20), {10, 10}));
+
+		set.instantiate(new RoundTile({}, 5));
+		auto t = set.instantiate(new RoundTile(getRandomPointAway({}, 35+2*StatusScene::score), 5));
 		set.instantiate(new Goal(t->centre()));
 		generateLevelPath(&set, {}, t->centre());
+
 		set.instantiate(new Player());
-		//set.instantiate(new Enemy({-5, 2}));
-		Thing2D::view_scale = .3;
+
+		for(auto c : LaCreatura::las_creaturas)
+			if(c==Player::instance) continue;
+			else if((c->centre()-Player::instance->centre()).getLengthSquare()<10)
+				set.scheduleDestroy(c);
+		std::cout << FloorTile::tiles.size() << '\n';
 	}
 	void loop() override
 	{
-		render::pattern::checkerBoard(-Thing2D::view_pos.x*Thing2D::getScalar(), -Thing2D::view_pos.y*Thing2D::getScalar(), 15);
+		//render::pattern::checkerBoard(-Thing2D::view_pos.x*Thing2D::getScalar(), -Thing2D::view_pos.y*Thing2D::getScalar(), 15);
+		for(int x = 0; x < WindowProps::getWidth();      x+=5)
+			for(int y = 0; y < WindowProps::getHeight(); y+=5)
+				put_char(v2i(x,y), '.', C_GRAY);
 		for(auto c : LaCreatura::las_creaturas)
-		for(auto d : LaCreatura::las_creaturas)
-				aabb::resolveOverlaps(c, d, c->max_hp/(c->max_hp+d->max_hp));
+			if(Thing2D::onScreen(c->getRect()))
+				for(auto d : LaCreatura::las_creaturas)
+						aabb::resolveOverlaps(c, d, c->max_hp/(c->max_hp+d->max_hp));
 		Scene::loop();
+		Goal::instance->render();
 		for(auto c : LaCreatura::las_creaturas)
-			c->render();
+			if(!Thing2D::onScreen(c->getRect())) continue;
+			else c->render();
+		s_qline(Thing2D::spaceToScr(Player::instance->centre()), Input::getMP(), '@');
 		Thing2D::view_pos = common::lerp(Thing2D::view_pos, Player::instance->centre(), FD::delta*4);
 	}
 	void onKey(SDL_Keycode key) override
@@ -111,10 +123,10 @@ struct S_A : Scene
 				load();
 				break;
 			case SDLK_z:
-				Thing2D::view_scale = .05;
+				Thing2D::view_scale = .3/WindowProps::getPixScale();
 				break;
 			case SDLK_x:
-				Thing2D::view_scale = .3;
+				Thing2D::view_scale = .9/WindowProps::getPixScale();
 				break;
 		}
 	}

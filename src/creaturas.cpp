@@ -1,6 +1,7 @@
 #include "creaturas.h"
 #include "attack.h"
 #include "expirables.h"
+#include "resources.h"
 #include <cstdint>
 #include <cumt/cumt_common.h>
 #include <cumt/cumt_things.h>
@@ -26,10 +27,10 @@ static void click(const uint8_t& b, LaCreatura* parent)
 static void render_lc(LaCreatura* p, SDL_Colour c)
 {
 	using namespace shitrndr;
-	SDL_Rect r = p->getRect();
-	float s = 1-std::abs(WindowProps::getHeight()/2.-r.y)/WindowProps::getHeight()*2;
-	SetColour(c);
-	FillRect(r);
+	v2i sp = Thing2D::spaceToScr(p->pos);
+	v2i ss = (p->scl*Thing2D::getScalar()).to<int>();
+	if(((Player::instance->centre()-p->centre()).getLengthSquare()/8 < std::max(1.f, Player::instance->getFlame()))*4)
+		put_qstring(sp-v2i(ss.x/2, ss.y*.6), TEST_SPR, 0, C_FG, C_GRAY);
 }
 
 void CreatureState::damage(float d)

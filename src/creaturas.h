@@ -130,11 +130,13 @@ struct LaCreatura : Thing2D
 
 	void update() override
 	{
+		if(!onScreen(getRect())) return;
 		fsm.update();
 		fm.update();
 	}
 	void render() override
 	{
+		if(!onScreen(getRect())) return;
 		fsm.render();
 		using namespace shitrndr;
 
@@ -229,7 +231,7 @@ struct Enemy : LaCreatura
 
 		stamina = max_stamina = 1;
 		attack_cooldown = .6;
-		hurt_cooldown = 1;
+		hurt_cooldown = .4;
 		strength = .6;
 		range = 1.5;
 		detection_radius = 5;

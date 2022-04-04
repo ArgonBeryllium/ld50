@@ -5,6 +5,7 @@
 #include <cumt/cumt_aabb.h>
 #include <cumt/cumt_things.h>
 #include <shitrndr.h>
+#include "resources.h"
 #include "scenes.h"
 using namespace cumt;
 
@@ -30,14 +31,8 @@ struct FloorTile : Thing2D
 struct RoundTile : FloorTile
 {
 	float r, rs;
-	RoundTile(v2f pos_, float r_ = 1) : r(r_), rs(r_*r_), FloorTile(pos_, {r_*2,r_*2}) {}
-	void render() override
-	{
-		using namespace shitrndr;
-		SetColour({55,55,55,255});
-		v2i sc = spaceToScr(centre());
-		FillCircle(sc.x, sc.y, getScalar()*r);
-	}
+	RoundTile(v2f pos_, float r_ = 1) : r(r_), rs(r_*r_), FloorTile(pos_-v2f{r_,r_}, {r_*2,r_*2}) {}
+	void render() override;
 };
 
 inline bool getPreciseOverlap(const Thing2D* a, v2f p)
@@ -75,13 +70,13 @@ struct FloorMember
 
 struct Goal : Thing2D
 {
-	Goal(v2f pos_) : Thing2D(pos_-v2f{2,2}, {4,4}) {}
+	static Goal* instance;
+	Goal(v2f pos_) : Thing2D(pos_-v2f{2,2}, {4,4}) { instance = this; }
+	~Goal() { instance = nullptr; }
 	void update() override;
 	void render() override
 	{
-		using namespace shitrndr;
-		SetColour({0,255,255,255});
 		v2i sc = spaceToScr(centre());
-		DrawCircle(sc.x, sc.y, getScalar()*2);
+		s_qdcircle(sc, scl.x*getScalar()/FONT_SIZE, ".!"[int(FD::time)%2], C_GOAL);
 	}
 };
