@@ -7,6 +7,7 @@
 #include "fsm.h"
 #include "fsm.h"
 #include "level.h"
+#include "resources.h"
 #include "scenes.h"
 using namespace cumt;
 
@@ -95,6 +96,7 @@ struct HurtState : TransitionState
 // dios mio
 struct LaCreatura : Thing2D
 {
+	std::wstring spr_wait = SPR_SNAIL_WAIT, spr_def = SPR_SNAIL;
 	CreatureFSM fsm;
 	State *idle_state, *move_state, *roll_state, *attack_state = new AttackState(this), *hurt_state = new HurtState(this);
 	TransitionState* transition_state = new TransitionState(this);
@@ -134,29 +136,24 @@ struct LaCreatura : Thing2D
 		fsm.update();
 		fm.update();
 	}
+
+	void renderBar(v2i p, float f, int col, wchar_t c)
+	{
+		s_qline(p, p+v2i(getScalar()*f, 0), c, col);
+		put_char(quantisePos(p), '[');
+		put_char(quantisePos(p+v2i(getScalar(),0)), ']');
+	}
 	void render() override
 	{
 		if(!onScreen(getRect())) return;
 		fsm.render();
 		using namespace shitrndr;
 
-		SDL_Rect sr = getRect();
-		sr.y -= 5;
-		sr.h *= .2;
-		SetColour({15,15,15,255});
-		FillRect(sr);
-		SetColour({15,150,15,255});
-		sr.w *= stamina/max_stamina;
-		FillRect(sr);
-
-		SDL_Rect hr = getRect();
-		hr.y -= 8;
-		hr.h *= .2;
-		SetColour({15,15,15,255});
-		FillRect(hr);
-		hr.w *= hp/max_hp;
-		SetColour({150,15,15,255});
-		FillRect(hr);
+		v2i bp = spaceToScr(pos);
+		bp.y -= 32;
+		renderBar(bp, hp/max_hp, C_HURT, '#');
+		bp.y+=13;
+		renderBar(bp, hp/max_hp, C_GRAY, '-');
 	}
 
 	void onKey(SDL_Keycode key)     { fsm.onKey(key); }
@@ -176,6 +173,8 @@ struct Player : LaCreatura
 
 	Player(v2f pos_ = {}) : LaCreatura(pos_, {1,1}, 2)
 	{
+		spr_wait = SPR_P_WAIT;
+		spr_def = SPR_P;
 		idle_state = new PIdleState(this);
 		move_state = new PMoveState(this);
 		roll_state = new PRollState(this);
@@ -207,15 +206,32 @@ struct Player : LaCreatura
 	}
 	void render() override
 	{
-		LaCreatura::render();
-		render::text(Thing2D::spaceToScr(centre()), "P");
-		render::text(Thing2D::spaceToScr(centre()+v2f{1,-.5}), std::to_string(getFlame()));
+		static v2f fpt[3] = {{},{},{}};
+		v2f fp = Thing2D::scrToSpace(shitrndr::Input::getMP())-centre();
+		fp = fp.normalised();
+		fp += centre();
+		char c = FLAME_CHARS[std::min(9, int(getFlame()*2)+int(FD::time*6)%2)];
+		int coli = std::min(4, int(getFlame()));
+
+		s_qfcircle(spaceToScr(fp), getFlame(), L'░', 0, CS_FLAME[coli]);
+		if(coli>2) put_char(quantisePos(Thing2D::spaceToScr(fpt[0])), c, C_FG, FLAME_CHARS[coli-2]);
+		if(coli>1) put_char(quantisePos(Thing2D::spaceToScr(fpt[1])), c, C_FG, FLAME_CHARS[coli-1]);
+		if(coli>0) put_char(quantisePos(Thing2D::spaceToScr(fpt[2])), c, C_FG, FLAME_CHARS[coli-1]);
+		put_char(quantisePos(Thing2D::spaceToScr(fp)), c, C_FG, CS_FLAME[coli]);
+		fpt[0] = fpt[1];
+		fpt[1] = fpt[2];
+		fpt[2] = fp;
+
+		fsm.render();
+		using namespace shitrndr;
+
+		v2i bp = spaceToScr(pos);
+		bp.y -= 32;
+		renderBar(bp, hp/max_hp, C_HURT, '#');
 	}
 
 	virtual void die() override
 	{
-		Particles2D* p = new Particles2D(30);
-		parent_set->instantiate(p);
 		StatusScene::lose();
 	}
 };
@@ -251,5 +267,6 @@ struct Enemy : LaCreatura
 	{
 		Player::instance->base_flame += max_hp;
 		parent_set->scheduleDestroy(this);
+		parent_set->instantiate(new Particles(centre(), C_HURT, ',', 1));
 	}
 };

@@ -21,16 +21,22 @@ constexpr inline uint32_t ctoi(const SDL_Colour& c)
 inline SDL_Texture* SHEET_LOGO;
 inline Mix_Chunk* S_SPLASH;
 
-inline constexpr uint32_t C_BG = (0x010203), C_FG = (0xfafffd), C_GRAY = (0x8a8f8d), C_GOAL = (0xffaa11);
+inline constexpr uint32_t C_BG = (0x010203), C_FG = (0xfafffd), C_GRAY = (0x8a8f8d), C_GOAL = (0xffaa11), C_HURT = (0xff2219);
+inline constexpr uint32_t CS_FLAME[4] = {0xf79009, 0xf73509, 0xf79009, 0xfce4ae};
+inline constexpr uint32_t CS_LEVEL[4] = {0x254259, C_GRAY, 0x3b2559, 0x397a3e};
+
 inline TTF_Font* FONT;
 constexpr float FONT_SIZE = 12, FONT_RATIO = 5./6, FONT_W = FONT_SIZE*FONT_RATIO;
 
-inline std::wstring TEST_SPR;
+inline std::wstring SPR_P, SPR_P_WAIT, SPR_SNAIL, SPR_SNAIL_WAIT;
+inline std::wstring SPRS_P_WALK[2], SPRS_P_ROLL[2];
+inline constexpr char FLAME_CHARS[9] = ".+*!O";
+inline constexpr int FLAME_CHARS_C = 9;
 
 inline float getLum(const SDL_Colour& c) { return float(c.r+c.g+c.b)/3/255; }
-const inline wchar_t* BCHARS = L" -+x#";
+const inline wchar_t* BCHARS = L"  -+x#";
 //L"·∙•○";
-const int BCHARS_C = 5;
+const int BCHARS_C = 6;
 
 inline cumt::render::TextData TD_DEF_L, TD_DEF_C, TD_DEF_R, TD_JP_C;
 
@@ -62,7 +68,15 @@ inline void loadResources()
 	using namespace cumt;
 	audio::init();
 
-	TEST_SPR = loadStrSprite("res/torchie2.txt");
+	SPR_P = loadStrSprite("res/torchie2.txt");
+	SPR_SNAIL = loadStrSprite("res/snail.txt");
+	SPR_SNAIL_WAIT = loadStrSprite("res/snail_wait.txt");
+	SPR_P_WAIT = loadStrSprite("res/p_wait.txt");
+
+	SPRS_P_WALK[0] = loadStrSprite("res/pwalk_1.txt");
+	SPRS_P_WALK[1] = loadStrSprite("res/pwalk_2.txt");
+	SPRS_P_ROLL[0] = loadStrSprite("res/p_roll1.txt");
+	SPRS_P_ROLL[1] = loadStrSprite("res/p_roll2.txt");
 
 	SHEET_LOGO = loadTexture("logo.png");
 	S_SPLASH = loadSound("splash.wav");
@@ -121,7 +135,7 @@ inline void put_char(const shitrndr::helpers::vec2<int>& p, const wchar_t& c, co
 	auto sp = deQuantisePos(p);
 	Copy(t, {sp.x, sp.y, static_cast<int>(FONT_W), static_cast<int>(FONT_SIZE)});
 }
-inline void put_string(const shitrndr::helpers::vec2<int>& p, const std::wstring& s, float a = 0, const uint32_t& f_col = C_FG, const uint32_t& b_col = C_BG)
+inline void put_string(const shitrndr::helpers::vec2<int>& p, const std::wstring& s, bool a = 0, const uint32_t& f_col = C_FG, const uint32_t& b_col = C_BG)
 {
 	using namespace shitrndr;
 	int xo = 0, yo = 0;
@@ -135,13 +149,10 @@ inline void put_string(const shitrndr::helpers::vec2<int>& p, const std::wstring
 			yo++;
 			continue;
 		}
-		//a += std::atan2(yo, xo);
-		//int m = std::sqrt(xo*xo+yo*yo);
-		//put_char(p+helpers::vec2<int>{int(xo*std::cos(a)),int(yo*std::sin(a))}, c, f_col, b_col);
-		put_char(p+helpers::vec2<int>{xo,yo}, c, f_col, b_col);
+		put_char(p+helpers::vec2<int>{(a?-1:1)*xo,yo}, c, f_col, b_col);
 	}
 }
-inline void put_qstring(const shitrndr::helpers::vec2<int>& p, const std::wstring& s, float a = 0, const uint32_t& f_col = C_FG, const uint32_t& b_col = C_BG) { put_string(quantisePos(p), s, a, f_col, b_col); }
+inline void put_qstring(const shitrndr::helpers::vec2<int>& p, const std::wstring& s, bool a = 0, const uint32_t& f_col = C_FG, const uint32_t& b_col = C_BG) { put_string(quantisePos(p), s, a, f_col, b_col); }
 
 inline static int sign(int i) { return i>0?1:i<0?-1:0; }
 

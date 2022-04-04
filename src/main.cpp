@@ -1,7 +1,10 @@
+#include <SDL2/SDL_mouse.h>
 #include <cstdint>
 #include <cumt/cumt.h>
+#include <cumt/cumt_aabb.h>
 #include <cumt/cumt_things.h>
 #include <shitrndr.h>
+#include <vector>
 #include "creaturas.h"
 #include "fsm.h"
 #include "level.h"
@@ -34,9 +37,33 @@ int CUMT_MULP_MAIN()
 
 using namespace shitrndr;
 
-void spawnTrinket(v2f p)
+struct Heal : Thing2D
 {
-	//TODO
+	static std::vector<Heal*> heals;
+	Heal(v2f pos_) : Thing2D(pos_, {.5,.5}) { heals.push_back(this); }
+	~Heal()
+	{
+		auto i = std::find(heals.begin(), heals.end(), this);
+		heals.erase(i);
+	}
+	void render() override
+	{
+		put_char(quantisePos(spaceToScr(pos)), "*+"[int(FD::time*2)%2], CS_FLAME[1]);
+	}
+	void update() override
+	{
+		if(aabb::getOverlap(Player::instance->getRect(), spaceToScr(pos)))
+		{
+			parent_set->scheduleDestroy(this);
+			Player::instance->hp += .5;
+			Player::instance->hp = std::min(Player::instance->hp, Player::instance->max_hp);
+		}
+	}
+};
+std::vector<Heal*> Heal::heals;
+void spawnTrinket(v2f p, ThingSet* set)
+{
+	set->instantiate(new Heal(p));
 }
 inline v2f getRandomPointAway(v2f o, float r)
 {
@@ -64,7 +91,7 @@ void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 		{
 			v2f p = getRandomPointAway(sp, common::frand()*20+10);
 			generateLevelPath(set, sp, p, depth+1);
-			spawnTrinket(p);
+			spawnTrinket(p, set);
 		}
 
 		sp += d.normalised()*r/2+v2f(common::frand(), common::frand())*.1;
@@ -91,7 +118,6 @@ struct S_A : Scene
 			if(c==Player::instance) continue;
 			else if((c->centre()-Player::instance->centre()).getLengthSquare()<10)
 				set.scheduleDestroy(c);
-		std::cout << FloorTile::tiles.size() << '\n';
 	}
 	void loop() override
 	{
@@ -104,12 +130,17 @@ struct S_A : Scene
 				for(auto d : LaCreatura::las_creaturas)
 						aabb::resolveOverlaps(c, d, c->max_hp/(c->max_hp+d->max_hp));
 		Scene::loop();
+
 		Goal::instance->render();
+		for(auto h : Heal::heals)
+			h->render();
+
 		for(auto c : LaCreatura::las_creaturas)
 			if(!Thing2D::onScreen(c->getRect())) continue;
 			else c->render();
-		s_qline(Thing2D::spaceToScr(Player::instance->centre()), Input::getMP(), '@');
+
 		Thing2D::view_pos = common::lerp(Thing2D::view_pos, Player::instance->centre(), FD::delta*4);
+		put_char(Input::getMP(), 'x', CS_FLAME[0]);
 	}
 	void onKey(SDL_Keycode key) override
 	{
@@ -177,6 +208,7 @@ void gameStart()
 
 	loadResources();
 
+	SDL_CaptureMouse(SDL_TRUE);
 	//Scene::states = {new S_Splash(), new S_A(), new S_B()};
 	Scene::scenes = {new S_A(), new StatusScene()};
 	Scene::allStart();

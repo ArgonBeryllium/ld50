@@ -24,13 +24,18 @@ static void click(const uint8_t& b, LaCreatura* parent)
 	}
 }
 
-static void render_lc(LaCreatura* p, SDL_Colour c)
+static void render_lc(LaCreatura* p, std::wstring s = L"", const uint32_t& c = C_FG)
 {
-	using namespace shitrndr;
-	v2i sp = Thing2D::spaceToScr(p->pos);
+	if(s.empty()) s = p->spr_def;
 	v2i ss = (p->scl*Thing2D::getScalar()).to<int>();
-	if(((Player::instance->centre()-p->centre()).getLengthSquare()/8 < std::max(1.f, Player::instance->getFlame()))*4)
-		put_qstring(sp-v2i(ss.x/2, ss.y*.6), TEST_SPR, 0, C_FG, C_GRAY);
+	v2i sp = Thing2D::spaceToScr(p->pos);
+	bool a = (p->target-p->centre()).x<0;
+	v2i fo = sp-v2i(a?-ss.x:0, ss.y*.3);
+
+	if(p==Player::instance)
+		put_qstring(fo, s, a, c, CS_LEVEL[StatusScene::instance->score]);
+	else if(((Player::instance->centre()-p->centre()).getLengthSquare()/16 < std::max(1.f, Player::instance->getFlame()))*4)
+		put_qstring(fo, s, a, c, CS_LEVEL[StatusScene::instance->score]);
 }
 
 void CreatureState::damage(float d)
@@ -53,7 +58,7 @@ void TransitionState::update()
 }
 void TransitionState::render()
 {
-	render_lc(parent, {210,210,210,Uint8(std::abs(std::sin(FD::time*4))*255)});
+	render_lc(parent, parent->spr_wait);
 }
 
 // ## player ## //
@@ -69,7 +74,7 @@ void PIdleState::update()
 }
 void PIdleState::render()
 {
-	render_lc(parent, {200,200,200,255});
+	render_lc(parent);
 }
 void PIdleState::onMB(uint8_t b)
 {
@@ -98,7 +103,7 @@ void PMoveState::update()
 }
 void PMoveState::render()
 {
-	render_lc(parent, {180,200,255,255});
+	render_lc(parent, SPRS_P_WALK[int(FD::time*3)%2]);
 }
 void PMoveState::onMB(uint8_t b)
 {
@@ -108,6 +113,11 @@ void PMoveState::onMB(uint8_t b)
 static constexpr float roll_dur = .2, roll_vuln = .3;
 void PRollState::enter()
 {
+	if(parent->stamina<roll_cost)
+	{
+		parent->fsm.enter_state(parent->idle_state);
+		return;
+	}
 	parent->stamina -= roll_cost;
 
 	v2f d = Thing2D::scrToSpace(shitrndr::Input::getMP())-parent->centre();
@@ -123,7 +133,7 @@ void PRollState::update()
 }
 void PRollState::render()
 {
-	render_lc(parent, {180,200,255,205});
+	render_lc(parent, SPRS_P_ROLL[int(FD::time*2)%2]);
 }
 // ############ //
 
@@ -153,7 +163,7 @@ void EIdleState::update()
 }
 void EIdleState::render()
 {
-	render_lc(parent, {200,180,180,255});
+	render_lc(parent);
 }
 
 void EMoveState::enter()
@@ -189,7 +199,7 @@ void EMoveState::update()
 }
 void EMoveState::render()
 {
-	render_lc(parent, {180,200,255,255});
+	render_lc(parent);
 }
 
 void ERollState::enter()
@@ -214,13 +224,17 @@ void ERollState::update()
 }
 void ERollState::render()
 {
-	render_lc(parent, {180,200,255,205});
+	render_lc(parent);
 }
 // ########### //
 
 // ## general ## //
 void AttackState::enter()
 {
+	if(parent==Player::instance)
+	{
+		parent->parent_set->instantiate(new Particles(parent->centre(), C_HURT, '-',1, 5));
+	}
 	if(parent->stamina<attack_cost)
 	{
 		parent->fsm.enter_state(parent->idle_state);
@@ -237,15 +251,16 @@ void AttackState::enter()
 }
 void AttackState::render()
 {
-	render_lc(parent, {10,20,255,255});
+	render_lc(parent);
 }
 
 void HurtState::enter()
 {
 	t = parent->hurt_cooldown;
 	next_state = parent->idle_state;
+	parent->parent_set->instantiate(new Particles(parent->centre(), C_HURT, '*',1, 5));
 }
 void HurtState::render()
 {
-	render_lc(parent, {255,10,10,Uint8(std::abs(std::sin(FD::time*4))*255)});
+	render_lc(parent, parent->spr_wait, C_HURT);
 }
