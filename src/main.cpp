@@ -40,7 +40,7 @@ using namespace shitrndr;
 struct Heal : Thing2D
 {
 	static std::vector<Heal*> heals;
-	Heal(v2f pos_) : Thing2D(pos_, {.5,.5}) { heals.push_back(this); }
+	Heal(v2f pos_) : Thing2D(pos_) { heals.push_back(this); }
 	~Heal()
 	{
 		auto i = std::find(heals.begin(), heals.end(), this);
@@ -48,7 +48,7 @@ struct Heal : Thing2D
 	}
 	void render() override
 	{
-		put_char(quantisePos(spaceToScr(pos)), "*+"[int(FD::time*2)%2], CS_FLAME[1]);
+		put_char(quantisePos(spaceToScr(centre())), "*+"[int(FD::time*2)%2], CS_FLAME[1]);
 	}
 	void update() override
 	{
@@ -91,7 +91,7 @@ void generateLevelPath(ThingSet* set, v2f sp, v2f t, int depth = 0)
 		{
 			v2f p = getRandomPointAway(sp, common::frand()*20+10);
 			generateLevelPath(set, sp, p, depth+1);
-			spawnTrinket(p, set);
+			spawnTrinket(p+(sp-p).normalised()*5, set);
 		}
 
 		sp += d.normalised()*r/2+v2f(common::frand(), common::frand())*.1;
